@@ -40,18 +40,14 @@ func processCreatedOrders(js jetstream.JetStream) {
 	}
 
 	cctx, err := c.Consume(func(msg jetstream.Msg) {
-		var order orders.Order
-		if err := json.Unmarshal(msg.Data(), &order); err != nil {
+		order, err := unmarshalOrderMsg(msg)
+		if err != nil {
 			logrus.Errorf("cannot process msg: %v", err)
 			msg.Nak()
 			return
 		}
 
-		if rand.Intn(3) == 0 {
-			order.Cancel()
-		} else {
-			order.Ship()
-		}
+		processOrder(&order)
 
 		if err := publishOrder(js, order); err != nil {
 			msg.Nak()
@@ -70,4 +66,21 @@ func processCreatedOrders(js jetstream.JetStream) {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 	<-done
+}
+
+func unmarshalOrderMsg(msg jetstream.Msg) (orders.Order, error) {
+	var order orders.Order
+	if err := json.Unmarshal(msg.Data(), &order); err != nil {
+		return orders.Order{}, err
+	}
+
+	return order, nil
+}
+
+func processOrder(order *orders.Order) {
+	if rand.Intn(3) == 0 {
+		order.Cancel()
+	} else {
+		order.Ship()
+	}
 }

@@ -2,9 +2,7 @@ package pub
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"golab-2024/orders"
 	"time"
 
 	"github.com/lucsky/cuid"
@@ -17,10 +15,7 @@ var StatsCMD = &cobra.Command{
 	Use:   "stats",
 	Short: "stats delivered orders",
 	Run: func(cmd *cobra.Command, args []string) {
-		loc := "EU"
-		if len(args) == 1 {
-			loc = args[0]
-		}
+		loc := getLocation(args)
 		js := mustGetNats()
 		stats(js, loc)
 	},
@@ -53,8 +48,8 @@ func stats(js jetstream.JetStream, loc string) {
 	var total float64 = 0
 
 	cctx, err := c.Consume(func(msg jetstream.Msg) {
-		var order orders.Order
-		if err := json.Unmarshal(msg.Data(), &order); err != nil {
+		order, err := unmarshalOrderMsg(msg)
+		if err != nil {
 			logrus.Errorf("cannot process msg: %v", err)
 			msg.Nak()
 			return
@@ -73,4 +68,20 @@ func stats(js jetstream.JetStream, loc string) {
 
 	logrus.Infof("%s orders count: %d", loc, count)
 	logrus.Infof("Total %s orders: %.2f€", loc, total)
+}
+
+func getLocation(args []string) string {
+	loc := "EU"
+	if len(args) == 1 {
+		loc = args[0]
+	}
+
+	switch loc {
+	case "EU", "US":
+		return loc
+	}
+
+	logrus.Fatalf("invalid location: %s", loc)
+
+	return ""
 }

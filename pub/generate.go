@@ -14,14 +14,8 @@ var GenerateCMD = &cobra.Command{
 	Use:   "generate",
 	Short: "generate random orders",
 	Run: func(cmd *cobra.Command, args []string) {
-		num := 100
-		if len(args) == 1 {
-			n, err := strconv.Atoi(args[0])
-			if err == nil {
-				num = n
-			}
-		}
 		js := mustGetNats()
+		num := getNumber(args)
 		generateOrders(js, num)
 	},
 }
@@ -42,4 +36,17 @@ func generateOrders(js jetstream.JetStream, num int) {
 	}
 
 	wg.Wait()
+}
+
+func getNumber(args []string) int {
+	var defNumber = 100
+	if len(args) != 1 {
+		return defNumber
+	}
+
+	n, err := strconv.Atoi(args[0])
+	if err == nil {
+		return n
+	}
+	return defNumber
 }
